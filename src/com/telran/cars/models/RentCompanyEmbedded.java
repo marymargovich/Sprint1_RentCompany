@@ -8,9 +8,10 @@ import com.telran.cars.dto.enums.State;
 import com.telran.utils.Persistable;
 
 import java.io.*;
-import java.time.LocalDate;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class RentCompanyEmbedded extends AbstractRenCompany implements Persistable {
 
@@ -238,6 +239,81 @@ public class RentCompanyEmbedded extends AbstractRenCompany implements Persistab
         return  new RemoveCarData(car, null);
     }
 
+    @Override
+    public List<String> getMostPopularCarModels(LocalDate fromDate, LocalDate toDate, int fromAge, int toAge) {
+        List<RentRecord> recordsFromTo = getRentRecordsAtDate(fromDate, toDate);
+        if(recordsFromTo.isEmpty()) return new ArrayList<>();
+        Map<String, Long> mapTemp = recordsFromTo.stream()
+                .filter(r-> isProperAge(r, fromAge, toAge))
+                .collect(Collectors.groupingBy(r-> getCar(r.getRegNumber())
+                        .getModelName(),Collectors.counting()));
+        if(mapTemp.isEmpty()) return new ArrayList<>();
+        long maxValue = Collections.max(mapTemp.values());
+        List<String> res = new ArrayList<>();
+        mapTemp.forEach((k, v)-> {
+            if( v== maxValue)
+                res.add(k);
+                });
+
+        return res;
+    }
+
+    private boolean isProperAge(RentRecord r, int fromAge, int toAge) {
+        LocalDate rentDateDate = r.getRentDate();
+        Driver driver = getDriver((r.getLicenseId()));
+        int driverAge = rentDateDate.getYear()- driver.getBirthYear();
+
+        return  driverAge >= fromAge && driverAge< toAge;
+    }
+
+    @Override
+    public List<String> getMostProfitableCarModels(LocalDate fromDate, LocalDate toDate) {
+        List<RentRecord> recordsFromTo = getRentRecordsAtDate(fromDate, toDate);
+        if( recordsFromTo.isEmpty()) return new ArrayList<>();
+        Map<String, Double> modelCost = recordsFromTo.stream ()
+                .collect(Collectors.groupingBy(r->
+                                getCar (r.getRegNumber()).getModelName(),
+                        Collectors.summingDouble(RentRecord::getCost)));
+        if(modelCost.isEmpty()) return new ArrayList<>();
+        double max = getMaxCost(modelCost);
+        System.out.println(max);
+        List<String> res = new ArrayList<>();
+        double eps = 0.001;
+        modelCost.forEach((k, v)-> {
+            if(Math.abs(max-v)<= eps)
+                res.add(k);});
+
+        return res;
+    }
+
+    private double getMaxCost(Map<String, Double> modelCost) {
+        return modelCost.values().stream()
+                .mapToDouble(x->x)
+                .max()
+                .getAsDouble();
+    }
+
+    @Override
+    public List<Driver> getMostActiveDrivers() {
+        long max=0;
+        for (List<RentRecord> value: driverRecords.values()) {
+            max = value.size() > max ? value.size() : max;
+        }
+        long maxV = max;
+        List<Driver> res = new ArrayList<>();
+        driverRecords.forEach((k, v)-> {
+            if(v.size()== maxV) res.add(getDriver(k));
+        });
+        return res;
+    }
+
+
+    @Override
+    public List<String> getModelNames() {
+        return new ArrayList<>(modelCars.keySet());
+        //return models.values().stream().map(Model::getModelName).toList();
+    }
+
     private void updateRecord(RentRecord record, LocalDate returnDate, int damage, int tankPercent) {
         record.setDamages(damage);
         record.setTankPercent(tankPercent);
@@ -245,6 +321,7 @@ public class RentCompanyEmbedded extends AbstractRenCompany implements Persistab
 
         double cost = computeCost(getRentPricePerDay(record.getRegNumber()),
                 record.getRentDays(), getDaysDelay(record), tankPercent, getTankVolume(record.getRegNumber()));
+        record.setCost(cost);
 
     }
 

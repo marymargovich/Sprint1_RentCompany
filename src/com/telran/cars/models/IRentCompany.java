@@ -46,7 +46,13 @@ public interface IRentCompany extends Serializable {
                             int damage, int tankPercent);
 
 
+    List<String> getMostPopularCarModels(LocalDate fromDate, LocalDate toDate,
+                                         int fromAge, int toAge);
+
+    List<String> getMostProfitableCarModels(LocalDate fromDate, LocalDate toDate );
+
+    List<Driver> getMostActiveDrivers();
 
 
-
+    List<String> getModelNames();
 }
