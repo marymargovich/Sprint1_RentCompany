@@ -20,8 +20,7 @@ public class GetRecordItem extends RentCompanyItem {
     @Override
     public void perform() {
         fillFromToDates();
-        if( from == null|| to == null);
-        return;
+        if( from == null|| to == null) return;
         List<RentRecord> records = company.getRentRecordsAtDate(from, to);
         if( records.isEmpty()) {
             inOut.outputLine("No records");
